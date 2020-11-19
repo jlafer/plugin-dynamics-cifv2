@@ -1,0 +1,27 @@
+{
+  "name": "plugin-dynamics-cubic",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "postinstall": "flex-plugin pre-script-check"
+  },
+  "dependencies": {
+    "@material-ui/core": "^3.9.3",
+    "axios": "^0.21.0",
+    "core-js": "^3.7.0",
+    "faker": "^5.1.0",
+    "flex-plugin-scripts": "^4.3.5-beta.0",
+    "loadjs": "^4.2.0",
+    "moment": "^2.29.1",
+    "node-fetch": "^2.6.1",
+    "querystring": "^0.2.0",
+    "react": "16.5.2",
+    "react-dom": "16.5.2",
+    "react-event-timeline": "^1.6.3",
+    "react-icons": "^3.11.0",
+    "request": "^2.88.2"
+  },
+  "devDependencies": {
+    "@twilio/flex-ui": "^1"
+  }
+}
