@@ -15,9 +15,10 @@ module.exports = function getApi(context) {
   function acquireToken(dynamicsWebApiCallback) {
     function adalCallback(error, token) {
       if (!error) {
+        console.log('token retrieved:', token);
         dynamicsWebApiCallback(token);
       } else {
-        console.log('Token has not been retrieved. Error: ' + error.stack);
+        console.log('token has not been retrieved: error:', error.stack);
       }
     }
   
