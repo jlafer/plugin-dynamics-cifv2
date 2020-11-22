@@ -1,3 +1,9 @@
+/*
+  findContactByPhoneNum.js
+  Finds a contact object with the BusinessPhone (telephone1) specified.
+  Input parameters:
+    phoneNum (an E.164 or 10-digit phone number)
+*/
 const {corsResponse} = require('jlafer-twilio-runtime-util');
 let helpersPath = Runtime.getFunctions()['dynamicsHelpers'].path;
 let helpers = require(helpersPath);

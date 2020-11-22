@@ -50,7 +50,7 @@ async function createIncident(dynamics, contactid, incidentData) {
   // a retrieve with the id?
   const response = await dynamics.retrieveMultipleRequest(request);
   const records = response.value;
-  if (response.oDataCount == 1) {
+  if (response.value.length == 1) {
     const incident = {
       'incidentId': id,
       'ticketNumber': records[0].ticketnumber
@@ -71,7 +71,7 @@ async function fetchContact(dynamics, phoneNum) {
   const filter = `telephone1 eq '${tenDigitPhone}'`;
   
   const response = await dynamics.retrieveMultiple("contacts", properties, filter);
-  if (response.oDataCount === 0) {
+  if (response.value.length === 0) {
     console.log('fetchContact: query returned 0 rows!');
     return {};
   }

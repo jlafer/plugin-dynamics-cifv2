@@ -1,33 +1,56 @@
 /*
-  createCase.js
+  createCase
   Creates an incident object (displayed as a Case) for the contact specified.
-  Input parameters:
-    contact_id
-    productName
+  Required input parameters:
+    contactid - the Contact id
+    title - 
+    caseorigincode - (1=phone, 2=email, 3=web, see docs for others)
+    casetypecode - (1=question, 2=problem, 3=request)
+  Optional input parameters:
+    description -
+    productName - the name of an existing, active product in the Sales Hub.
+    subject - (string) will generate a new Subject object with the given Title
+  Additional valid incident properties, if supplied, will be submitted. These are
+  documented at https://docs.microsoft.com/en-us/dynamics365/customer-engagement/web-api/incident?view=dynamics-ce-odata-9.
+
+  NOTE: if string parameters need URL-encoding, this can be done in Studio using
+    liquid like this: {{ widgets.fnDataDip.parsed.suspectStr | url_encode }}
+    Such an input parameter will need decoding as done below with title, subject, etc.
 */
 const {corsResponse} = require('jlafer-twilio-runtime-util');
 let helpersPath = Runtime.getFunctions()['dynamicsHelpers'].path;
 let helpers = require(helpersPath);
 
 exports.handler = async function(context, event, callback) {
+  console.log(`createCase: event:`, event);
   const response = corsResponse();
   try {
     const dynamics = helpers.getApi(context);
-    const {contact_id: contactid, productName} = event;
-    console.log(`createCase: contactid = ${contactid}`);
-    console.log(`createCase: productName = ${productName}`);
-    const product = await helpers.fetchProduct(dynamics, productName);
-    // TODO move data spec to caller
-    const incidentData = {
-      "caseorigincode": 1,            // 1 = Phone
-      "casetypecode": 3,              // 3 = Request
-      "title": "Assistance with Card Renewal",
-      "description": "Customer requested assistance with transit card renewal",
-      "subjectid": {
-        title: "Payment Card *2355, Expires: 12/2020"
-      },
-      "productid@odata.bind": `/products(${product.productid})`
+    const {
+      contactid, productName, caseorigincode, casetypecode, title, description,
+      subject, ...otherData
+    } = event;
+    const product = (productName)
+      ? await helpers.fetchProduct(dynamics, productName)
+      : null;
+    const data = {
+      caseorigincode,
+      casetypecode,
+      title
     };
+    if (title) {
+      data.title = decodeURIComponent(title.replace( /\+/g, ' ' ));
+    }
+    if (description) {
+      data.description = decodeURIComponent(description.replace( /\+/g, ' ' ));
+    }
+    if (subject) {
+      data.subjectid = {title: decodeURIComponent(subject.replace( /\+/g, ' ' ))};
+    }
+    if (product) {
+      data["productid@odata.bind"] = `/products(${product.productid})`;
+    }
+    const incidentData = {...data, ...otherData};
     const incident = await helpers.createIncident(dynamics, contactid, incidentData);
     response.appendHeader('Content-Type', 'application/json');
     response.setBody(incident);
