@@ -12,9 +12,7 @@ let helpers = require(helpersPath);
 exports.handler = async function(context, event, callback) {
   const response = corsResponse();
   try {
-    const path = Runtime.getFunctions()['dynamicsWebApi'].path;
-    const getApi = require(path);
-    const dynamics = getApi(context);
+    const dynamics = helpers.getApi(context);
     const {contact_id: contactid, productName} = event;
     console.log(`createCase: contactid = ${contactid}`);
     console.log(`createCase: productName = ${productName}`);

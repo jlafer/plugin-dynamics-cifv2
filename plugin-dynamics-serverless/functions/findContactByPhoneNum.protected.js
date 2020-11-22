@@ -5,9 +5,7 @@ let helpers = require(helpersPath);
 exports.handler = async function handler(context, event, callback) {
   const response = corsResponse();
   try {
-    const path = Runtime.getFunctions()['dynamicsWebApi'].path;
-    const getApi = require(path);
-    const dynamics = getApi(context);
+    const dynamics = helpers.getApi(context);
     const {phoneNum} = event;
     const contact = await helpers.fetchContact(dynamics, phoneNum);
     response.appendHeader('Content-Type', 'application/json');
