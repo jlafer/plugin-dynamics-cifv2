@@ -66,7 +66,6 @@ async function createIncident(dynamics, contactid, incidentData) {
 
 async function fetchContact(dynamics, phoneNum) {
   const tenDigitPhone = phoneNum.replace('+1', '');
-  console.log(`findContact: tenDigitPhone = ${tenDigitPhone}`);
   const properties = ["contactid,firstname,lastname,telephone1,emailaddress1"];
   const filter = `telephone1 eq '${tenDigitPhone}'`;
   
@@ -77,7 +76,6 @@ async function fetchContact(dynamics, phoneNum) {
   }
   else {
     const row = response.value[0];
-    console.log('fetchContact: contactid = ', row.contactid);
     return row;
   }
 }

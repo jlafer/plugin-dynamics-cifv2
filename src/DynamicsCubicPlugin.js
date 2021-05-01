@@ -5,14 +5,17 @@ import loadjs from "loadjs"
 
 import {InfoPanel} from "./components/CustomTaskInfoPanel";
 import reducers, { namespace } from './states';
+import { FaFileDownload } from 'react-icons/fa';
 
 const PLUGIN_NAME = 'DynamicsCubicPlugin';
 
-const {REACT_APP_DYNAMICS_ORG} = process.env;
+const {REACT_APP_DYNAMICS_ORG, REACT_APP_DYNAMICS_CIF_VERSION} = process.env;
 console.log(`REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
-const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`
+console.log(`REACT_APP_DYNAMICS_CIF_VERSION = ${REACT_APP_DYNAMICS_CIF_VERSION}`);
+const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`;
 
 function screenpop(incidentId, ticketNumber) {
+  console.info('----------screenpop called');
   window.Microsoft.CIFramework.searchAndOpenRecords(
     "incident",
     `?$select=ticketnumber,title&$search=${ticketNumber}&$top=1&$filter=incidentid eq ${incidentId}`,
@@ -21,11 +24,11 @@ function screenpop(incidentId, ticketNumber) {
   .then(
     function success(result) {
       const res = JSON.parse(result);
-      console.log(`screenpop: `, res);
+      console.log(`----------screenpop res:`, res);
       //updateTaskAttributes(task.sid, res[0].contactid)
     },
     function (error) {
-      console.log(error.message);
+      console.log(`----------screenpop error: ${error.message}`);
     }
   )
 }
@@ -53,11 +56,16 @@ const onClickToActHandler = () => {
 };
 
 const initDynamicsApi = () => {
-  console.log('loadjs.ready: window.Microsoft.CIFramework:', window.Microsoft.CIFramework);
+  console.log(`${PLUGIN_NAME}: initDynamicsApi: window.Microsoft:`, window.Microsoft);
+  console.log(`${PLUGIN_NAME}: loadjs.ready: window.Microsoft.CIFramework:`, window.Microsoft.CIFramework);
   window.Microsoft.CIFramework.addHandler(
     "onclicktoact",
     onClickToActHandler
   );
+};
+
+const dynamicsApiLoadFailure = (notLoaded) => {
+  console.error(`${PLUGIN_NAME}: failed to load MS Dynamics CIF library!`, notLoaded);
 };
 
 export default class DynamicsCubicPlugin extends FlexPlugin {
@@ -68,7 +76,10 @@ export default class DynamicsCubicPlugin extends FlexPlugin {
   init(flex, manager) {
     this.registerReducers(manager);
     loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, 'CIF');
-    loadjs.ready('CIF', initDynamicsApi);
+    loadjs.ready('CIF', {
+      success: initDynamicsApi,
+      error: dynamicsApiLoadFailure
+    });
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.MainContainer.defaultProps.keepSideNavOpen = true;
     flex.Actions.addListener(
