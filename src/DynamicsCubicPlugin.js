@@ -1,17 +1,16 @@
 import React from 'react';
-import { VERSION } from '@twilio/flex-ui';
+import { Actions, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from 'flex-plugin';
 import loadjs from "loadjs"
 
 import {InfoPanel} from "./components/CustomTaskInfoPanel";
 import reducers, { namespace } from './states';
-import { FaFileDownload } from 'react-icons/fa';
 
 const PLUGIN_NAME = 'DynamicsCubicPlugin';
 
 const {REACT_APP_DYNAMICS_ORG, REACT_APP_DYNAMICS_CIF_VERSION} = process.env;
-console.log(`REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
-console.log(`REACT_APP_DYNAMICS_CIF_VERSION = ${REACT_APP_DYNAMICS_CIF_VERSION}`);
+console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
+console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_CIF_VERSION = ${REACT_APP_DYNAMICS_CIF_VERSION}`);
 const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`;
 
 function screenpop(incidentId, ticketNumber) {
@@ -24,11 +23,11 @@ function screenpop(incidentId, ticketNumber) {
   .then(
     function success(result) {
       const res = JSON.parse(result);
-      console.log(`----------screenpop res:`, res);
+      console.log(`${PLUGIN_NAME}: ----------screenpop res:`, res);
       //updateTaskAttributes(task.sid, res[0].contactid)
     },
     function (error) {
-      console.log(`----------screenpop error: ${error.message}`);
+      console.log(`${PLUGIN_NAME}: ----------screenpop error: ${error.message}`);
     }
   )
 }
@@ -37,7 +36,7 @@ function screenpop(incidentId, ticketNumber) {
  ** adjust number to handle WhatsApp **/
 function showContact(reservation) {
   const task = reservation.task;
-  console.info('!!!task.attributes', task.attributes)
+  console.log(`${PLUGIN_NAME}: !!!task.attributes`, task.attributes)
   const {from, direction, incidentId, ticketNumber} = task.attributes;
   if (window.Microsoft && direction !== 'outbound') {
     //const fromNumber = from.replace('+1', '').replace('whatsapp:', '')
@@ -51,18 +50,31 @@ function panel(mode) {
   window.Microsoft.CIFramework.setMode(mode);
 }
 
-const onClickToActHandler = () => {
-  console.log('onClickToActHandler: called');
-};
+const initCifLibrary = async function() {
+  const msft = await window.Microsoft;
+  await msft.CIFramework.setClickToAct(true);
+  msft.CIFramework.addHandler("onclicktoact", clickToActHandler);
+}
 
-const initDynamicsApi = () => {
-  console.log(`${PLUGIN_NAME}: initDynamicsApi: window.Microsoft:`, window.Microsoft);
-  console.log(`${PLUGIN_NAME}: loadjs.ready: window.Microsoft.CIFramework:`, window.Microsoft.CIFramework);
-  window.Microsoft.CIFramework.addHandler(
-    "onclicktoact",
-    onClickToActHandler
-  );
-};
+const clickToActHandler = function (eventData) {
+  const clickData = JSON.parse(eventData);
+  console.log(`${PLUGIN_NAME}: !!!clickData`, clickData);
+  console.log(`${PLUGIN_NAME}: !!!clickData.value`, clickData.value);
+  const actionData = {
+      destination: clickData.value.startsWith(1) ? `+${clickData.value}` : `+1${clickData.value.replace('+1', '')}`,
+      taskAttributes: {
+          name: clickData.recordTitle
+      }
+  };
+  panel(1);
+  console.log(`${PLUGIN_NAME}: !!!actionData`, actionData);
+  return Actions.invokeAction("StartOutboundCall", actionData)
+      .then(() => Promise.resolve())
+      .catch(e => {
+        console.log(`${PLUGIN_NAME}: !!!StartOutboundCall error:`, e)
+          return Promise.resolve()
+      })
+}
 
 const dynamicsApiLoadFailure = (notLoaded) => {
   console.error(`${PLUGIN_NAME}: failed to load MS Dynamics CIF library!`, notLoaded);
@@ -75,11 +87,12 @@ export default class DynamicsCubicPlugin extends FlexPlugin {
 
   init(flex, manager) {
     this.registerReducers(manager);
-    loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, 'CIF');
-    loadjs.ready('CIF', {
-      success: initDynamicsApi,
-      error: dynamicsApiLoadFailure
-    });
+    loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, {returnPromise: true})
+    .then(res => {
+        initCifLibrary()
+    })
+    .catch(dynamicsApiLoadFailure);
+
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.MainContainer.defaultProps.keepSideNavOpen = true;
     flex.Actions.addListener(
