@@ -1,0 +1,7 @@
+export const SET_SERVERLESS_URI = 'SET_SERVERLESS_URI';
+export const SET_CURRENT_TASK = 'SET_CURRENT_TASK';
+export const SET_SYNC_TOKEN = 'SET_SYNC_TOKEN';
+
+export const ADD_TASK_TAB = 'ADD_TASK_TAB';
+export const REMOVE_TASK_TAB = 'REMOVE_TASK_TAB';
+export const SET_MY_PAGE_STATE = 'SET_MY_PAGE_STATE';
