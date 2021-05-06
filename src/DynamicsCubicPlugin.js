@@ -1,4 +1,4 @@
-import React from 'react';
+import * as R from 'ramda';
 import { Actions, Manager, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from 'flex-plugin';
 import loadjs from 'loadjs'
@@ -59,23 +59,29 @@ const onTaskAccepted = async (payload) => {
   manager.store.dispatch( addTaskTab(resSid, tabId) );
 };
 
-const onTaskSelected = (payload) => {
+const onTaskSelected = async (payload) => {
   console.log(`${PLUGIN_NAME}.onTaskSelected: payload:`, payload);
   const manager = Manager.getInstance();
   const resSid = payload.sid;
   const pageState = manager.store.getState()[namespace].pageState;
+  const msft = window.Microsoft;
+  const currentTabId = await getFocusedTab(msft);
   const tabId = pageState.taskTabs[resSid];
-  if (tabId) {
-    const msft = window.Microsoft;
+  if (tabId && tabId !== currentTabId) {
     focusTab(msft, tabId)
   }
 };
+
+const objPropsCnt = R.pipe(R.keys, R.length);
+
+const currentTaskCnt = (pageState) => objPropsCnt(pageState.taskTabs);
 
 const onTaskCompleted = (payload) => {
   const manager = Manager.getInstance();
   const resSid = payload.task.sid;
   manager.store.dispatch( removeTaskTab(resSid) );
-  // TODO if no more tasks
+  const pageState = manager.store.getState()[namespace].pageState;
+  if ( currentTaskCnt(pageState) === 0)
     setPanelMode(PANEL_MINIMIZE);
 }
 
