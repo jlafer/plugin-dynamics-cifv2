@@ -4,8 +4,8 @@ import { FlexPlugin } from 'flex-plugin';
 import loadjs from 'loadjs'
 
 import {
-  SEARCH_AND_OPEN, PANEL_MINIMIZE, PANEL_DOCK,
-  focusTab, getFocusedTab, getTabs
+  PANEL_MINIMIZE, PANEL_DOCK,
+  focusTab, getFocusedTab, popIncident
 } from './helpers/dynamicsUtil';
 
 //import {InfoPanel} from './components/CustomTaskInfoPanel';
@@ -16,27 +16,8 @@ const PLUGIN_NAME = 'DynamicsCubicPlugin';
 const {REACT_APP_DYNAMICS_ORG, REACT_APP_DYNAMICS_CIF_VERSION} = process.env;
 console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
 console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_CIF_VERSION = ${REACT_APP_DYNAMICS_CIF_VERSION}`);
-const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`;
 
-function popIncident(incidentId, ticketNumber) {
-  console.log(`${PLUGIN_NAME}.popIncident: incidentId=${incidentId} and ticketNumber=${ticketNumber}`);
-  window.Microsoft.CIFramework.searchAndOpenRecords(
-    'incident',
-    `?$select=ticketnumber,title&$search=${ticketNumber}&$top=1&$filter=incidentid eq ${incidentId}`,
-    SEARCH_AND_OPEN
-  )
-  .then(
-    function success(result) {
-      const res = JSON.parse(result);
-      console.log(`${PLUGIN_NAME}: popIncident res:`, res);
-      /*
-        if the plugin needs access to the returned data, it is available in the
-        results array, e.g., res[0].contactid
-      */
-     return res;
-    }
-  )
-}
+const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`;
 
 async function onNewTask(reservation) {
   const msft = window.Microsoft;
@@ -85,10 +66,19 @@ const onTaskCompleted = (payload) => {
     setPanelMode(PANEL_MINIMIZE);
 }
 
+const onNavigateToView = (_payload) => {
+  setPanelMode(PANEL_DOCK);
+};
+
 // dock (1), minimize (0) or hide (2) the Flex iFrame panel in Dynamics
 const setPanelMode = (mode) => window.Microsoft.CIFramework.setMode(mode);
 
-const initCifLibrary = async function() {
+const initCifLibrary = function() {
+  window.addEventListener('CIFInitDone', addCifHandlers);
+}
+
+const addCifHandlers = async function() {
+  console.log(`${PLUGIN_NAME}: addCifHandlers called`);
   const msft = await window.Microsoft;
   await msft.CIFramework.setClickToAct(true);
   msft.CIFramework.addHandler('onclicktoact', clickToActHandler);
@@ -108,30 +98,15 @@ const clickToActHandler = function (eventData) {
   setPanelMode(PANEL_DOCK);
   console.log(`${PLUGIN_NAME}: actionData:`, actionData);
   return Actions.invokeAction('StartOutboundCall', actionData)
-    .then(() => Promise.resolve())
+    .then(Promise.resolve)
     .catch(e => {
-      console.log(`${PLUGIN_NAME}: StartOutboundCall error:`, e)
-        return Promise.resolve()
+      console.log(`${PLUGIN_NAME}: StartOutboundCall error:`, e);
+      return Promise.resolve();
     })
 }
 
 const dynamicsApiLoadFailure = (notLoaded) => {
   console.error(`${PLUGIN_NAME}: failed to load MS Dynamics CIF library!`, notLoaded);
-};
-
-const toggleTab = (_payload) => {
-  const manager = Manager.getInstance();
-  const pageState = manager.store.getState()[namespace].pageState;
-  if (pageState.myPageState === 'INACTIVE') {
-    manager.store.dispatch( setMyPageState('PAGE_ACTIVE') );
-    focusTab(window.Microsoft, 'tab-id-1');
-  }
-  else {
-    manager.store.dispatch( setMyPageState('INACTIVE') );
-    focusTab(window.Microsoft, 'tab-id-0');
-  }
-  //getFocusedTab(window.Microsoft);
-  //getTabs(window.Microsoft);
 };
 
 export default class DynamicsCubicPlugin extends FlexPlugin {
@@ -140,25 +115,21 @@ export default class DynamicsCubicPlugin extends FlexPlugin {
   }
 
   init(flex, manager) {
+    console.log(`${PLUGIN_NAME}: initializing...`);
     this.registerReducers(manager);
-    console.log(`${PLUGIN_NAME}: ready to load CIF...`);
     loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, {returnPromise: true})
-    .then(initCifLibrary)
-    .catch(dynamicsApiLoadFailure);
+      .then(initCifLibrary)
+      .catch(dynamicsApiLoadFailure);
 
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.MainContainer.defaultProps.keepSideNavOpen = true;
     flex.RootContainer.Content.remove('project-switcher');
 
-    flex.Actions.addListener(
-      'afterNavigateToView',
-      (_payload) => {setPanelMode(PANEL_DOCK);}
-    );
     manager.workerClient.on('reservationCreated', onNewTask);
     flex.Actions.addListener('afterAcceptTask', onTaskAccepted);
     flex.Actions.addListener('afterSelectTask', onTaskSelected);
     flex.Actions.addListener('afterCompleteTask', onTaskCompleted);
-    //flex.Actions.addListener('afterSetActivity', toggleTab);
+    flex.Actions.addListener('afterNavigateToView', onNavigateToView);
     //flex.TaskInfoPanel.Content.replace(<InfoPanel key={'taskInfoPanel'}/>);
   }
 
