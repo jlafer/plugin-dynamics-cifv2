@@ -1,3 +1,6 @@
+import loadjs from 'loadjs'
+import * as R from 'ramda';
+
 // constants used by searchAndOpenRecords
 export const SEARCH_ONLY = true;
 export const SEARCH_AND_OPEN = false;
@@ -6,6 +9,33 @@ export const SEARCH_AND_OPEN = false;
 export const PANEL_MINIMIZE = 0;
 export const PANEL_DOCK = 1;
 export const PANEL_HIDE = 2;  // CIF v2 only
+
+export const initDynamicsCIF = (baseURL, clickToActHandler) => {
+  loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, {returnPromise: true})
+  .then(initCIFLibrary(clickToActHandler))
+  .catch(dynamicsApiLoadFailure);
+}
+
+const initCIFLibrary = (clickToActHandler) =>
+  () => {
+    window.addEventListener('CIFInitDone', addCIFHandlers(clickToActHandler));
+  };
+
+const addCIFHandlers = (clickToActHandler) =>
+  async () => {
+    console.log(`addCIFHandlers called`);
+    const msft = await window.Microsoft;
+    await msft.CIFramework.setClickToAct(true);
+    msft.CIFramework.addHandler('onclicktoact', clickToActHandler);
+    setPanelMode(PANEL_MINIMIZE);
+  };
+
+const dynamicsApiLoadFailure = (notLoaded) => {
+  console.error(`${PLUGIN_NAME}: failed to load MS Dynamics CIF library!`, notLoaded);
+};
+
+// dock (1), minimize (0) or hide (2) the iFramed Flex panel in Dynamics
+export const setPanelMode = (mode) => window.Microsoft.CIFramework.setMode(mode);
 
 export const popIncident = (incidentId, ticketNumber) => {
   console.log(`popIncident: incidentId=${incidentId} and ticketNumber=${ticketNumber}`);

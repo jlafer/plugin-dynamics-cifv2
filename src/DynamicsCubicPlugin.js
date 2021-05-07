@@ -1,32 +1,27 @@
-import * as R from 'ramda';
 import { Actions, Manager, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from 'flex-plugin';
-import loadjs from 'loadjs'
 
 import {
   PANEL_MINIMIZE, PANEL_DOCK,
-  focusTab, getFocusedTab, popIncident
+  focusTab, getFocusedTab, initDynamicsCIF, popIncident, setPanelMode
 } from './helpers/dynamicsUtil';
-
+import {objPropsCnt} from './helpers/util';
 //import {InfoPanel} from './components/CustomTaskInfoPanel';
-import reducers, { namespace, addTaskTab, removeTaskTab, setMyPageState } from './states';
+import reducers, { namespace, addTaskTab, removeTaskTab } from './states';
 
 const PLUGIN_NAME = 'DynamicsCubicPlugin';
 
-const {REACT_APP_DYNAMICS_ORG, REACT_APP_DYNAMICS_CIF_VERSION} = process.env;
+const {REACT_APP_DYNAMICS_ORG} = process.env;
 console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
-console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_CIF_VERSION = ${REACT_APP_DYNAMICS_CIF_VERSION}`);
 
 const baseURL = `https://${REACT_APP_DYNAMICS_ORG}.crm.dynamics.com`;
 
 async function onNewTask(reservation) {
-  const msft = window.Microsoft;
   const task = reservation.task;
   console.log(`${PLUGIN_NAME}: task.attributes:`, task.attributes)
-  const {direction, incidentId, ticketNumber} = task.attributes;
-  if (msft && direction !== 'outbound') {
-    await popIncident(incidentId, ticketNumber);
-  }
+  const {incidentId, ticketNumber} = task.attributes;
+  // TODO need to exclude O/B contacts
+  await popIncident(incidentId, ticketNumber);
   await setPanelMode(PANEL_DOCK);
 }
 
@@ -53,42 +48,22 @@ const onTaskSelected = async (payload) => {
   }
 };
 
-const objPropsCnt = R.pipe(R.keys, R.length);
-
-const currentTaskCnt = (pageState) => objPropsCnt(pageState.taskTabs);
-
 const onTaskCompleted = (payload) => {
   const manager = Manager.getInstance();
   const resSid = payload.task.sid;
   manager.store.dispatch( removeTaskTab(resSid) );
   const pageState = manager.store.getState()[namespace].pageState;
-  if ( currentTaskCnt(pageState) === 0)
+
+  // if the last active task has completed, minimize the Flex panel
+  if ( objPropsCnt(pageState.taskTabs) === 0)
     setPanelMode(PANEL_MINIMIZE);
 }
 
-const onNavigateToView = (_payload) => {
-  setPanelMode(PANEL_DOCK);
-};
-
-// dock (1), minimize (0) or hide (2) the Flex iFrame panel in Dynamics
-const setPanelMode = (mode) => window.Microsoft.CIFramework.setMode(mode);
-
-const initCifLibrary = function() {
-  window.addEventListener('CIFInitDone', addCifHandlers);
-}
-
-const addCifHandlers = async function() {
-  console.log(`${PLUGIN_NAME}: addCifHandlers called`);
-  const msft = await window.Microsoft;
-  await msft.CIFramework.setClickToAct(true);
-  msft.CIFramework.addHandler('onclicktoact', clickToActHandler);
-  setPanelMode(PANEL_MINIMIZE);
-}
+const onNavigateToView = (_payload) => { setPanelMode(PANEL_DOCK); };
 
 const clickToActHandler = function (eventData) {
   const clickData = JSON.parse(eventData);
   console.log(`${PLUGIN_NAME}: clickData:`, clickData);
-  console.log(`${PLUGIN_NAME}: clickData.value:`, clickData.value);
   const actionData = {
     destination: clickData.value.startsWith(1) ? `+${clickData.value}` : `+1${clickData.value.replace('+1', '')}`,
     taskAttributes: {
@@ -105,10 +80,6 @@ const clickToActHandler = function (eventData) {
     })
 }
 
-const dynamicsApiLoadFailure = (notLoaded) => {
-  console.error(`${PLUGIN_NAME}: failed to load MS Dynamics CIF library!`, notLoaded);
-};
-
 export default class DynamicsCubicPlugin extends FlexPlugin {
   constructor() {
     super(PLUGIN_NAME);
@@ -117,14 +88,10 @@ export default class DynamicsCubicPlugin extends FlexPlugin {
   init(flex, manager) {
     console.log(`${PLUGIN_NAME}: initializing...`);
     this.registerReducers(manager);
-    loadjs(`${baseURL}/webresources/Widget/msdyn_ciLibrary.js`, {returnPromise: true})
-      .then(initCifLibrary)
-      .catch(dynamicsApiLoadFailure);
-
+    initDynamicsCIF(baseURL, clickToActHandler);
     flex.AgentDesktopView.defaultProps.showPanel2 = false;
     flex.MainContainer.defaultProps.keepSideNavOpen = true;
     flex.RootContainer.Content.remove('project-switcher');
-
     manager.workerClient.on('reservationCreated', onNewTask);
     flex.Actions.addListener('afterAcceptTask', onTaskAccepted);
     flex.Actions.addListener('afterSelectTask', onTaskSelected);
