@@ -9,7 +9,7 @@ import {objPropsCnt} from './helpers/util';
 //import {InfoPanel} from './components/CustomTaskInfoPanel';
 import reducers, { namespace, addTaskTab, removeTaskTab } from './states';
 
-const PLUGIN_NAME = 'DynamicsCubicPlugin';
+const PLUGIN_NAME = 'DynamicsCIFv2Plugin';
 
 const {REACT_APP_DYNAMICS_ORG} = process.env;
 console.log(`${PLUGIN_NAME}: REACT_APP_DYNAMICS_ORG = ${REACT_APP_DYNAMICS_ORG}`);
@@ -80,7 +80,7 @@ const clickToActHandler = function (eventData) {
     })
 }
 
-export default class DynamicsCubicPlugin extends FlexPlugin {
+export default class DynamicsCIFv2Plugin extends FlexPlugin {
   constructor() {
     super(PLUGIN_NAME);
   }

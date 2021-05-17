@@ -16,6 +16,10 @@
   NOTE: if string parameters need URL-encoding, this can be done in Studio using
     liquid like this: {{ widgets.fnDataDip.parsed.suspectStr | url_encode }}
     Such an input parameter will need decoding as done below with title, subject, etc.
+  {"name": "{{widgets.fnFindContact.parsed.firstname}}  {{widgets.fnFindContact.parsed.lastname}}",
+  "contactId": "{{widgets.fnFindContact.parsed.contactid}}",
+  "incidentId": "{{widgets.fnCreateCase.parsed.incidentId}}",
+  "ticketNumber": "{{widgets.fnCreateCase.parsed.ticketNumber}}"  }
 */
 const {corsResponse} = require('jlafer-twilio-runtime-util');
 let helpersPath = Runtime.getFunctions()['dynamicsHelpers'].path;

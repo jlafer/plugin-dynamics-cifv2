@@ -1,4 +1,4 @@
 import * as FlexPlugin from 'flex-plugin';
-import DynamicsCubicPlugin from './DynamicsCubicPlugin';
+import DynamicsCIFv2Plugin from './DynamicsCIFv2Plugin';
 
-FlexPlugin.loadPlugin(DynamicsCubicPlugin);
+FlexPlugin.loadPlugin(DynamicsCIFv2Plugin);
