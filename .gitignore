@@ -67,3 +67,6 @@ pluginsService.js
 build/
 .twilio-functions
 notes.txt
+
+# MacOS
+.DS_Store
